@@ -1,0 +1,13 @@
+*~
+*.exe
+*.bak
+*.txt
+*.zip
+*.7z
+*.log
+
+
+# golang
+bin
+pkg
+

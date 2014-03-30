@@ -7,6 +7,10 @@
 *.log
 
 
+#vi
+.*.swp
+
+
 # golang
 bin
 pkg

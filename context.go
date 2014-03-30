@@ -2,7 +2,6 @@ package antpost
 
 import (
 	"fmt"
-	"sort"
 	"time"
 )
 
@@ -44,7 +43,8 @@ func (c *Context) Report() []*Report {
 	start := c.history[0].start
 	end := c.history[0].end
 
-	d := make([]int, 0, n)
+	d := make([]time.Duration, 0, n)
+	okd := make([]time.Duration, 0, n)
 	for _, h := range c.history {
 		if h.start.Before(start) {
 			start = h.start
@@ -54,26 +54,15 @@ func (c *Context) Report() []*Report {
 			end = h.end
 		}
 
-		d = append(d, int(h.end.Sub(h.start)/time.Millisecond))
+		d = append(d, h.end.Sub(h.start))
+		if h.step == StepResponsed && h.result == ResultOK {
+			okd = append(okd, h.end.Sub(h.start))
+		}
 	}
-
-	sort.Sort(sort.IntSlice(d))
-
-	var sum int64 = 0
-	for _, d := range d {
-		sum += int64(d)
-	}
-
-	p05 := time.Duration(d[n*5/100]) * time.Millisecond
-	p50 := time.Duration(d[n*50/100]) * time.Millisecond
-	p95 := time.Duration(d[n*95/100]) * time.Millisecond
 
 	r := new(Report)
-	r.Time.N = n
-	r.Time.Avg = time.Millisecond * time.Duration(sum/int64(n))
-	r.Time.P05 = p05
-	r.Time.P50 = p50
-	r.Time.P95 = p95
+	r.Time.Analyze(d)
+	r.OKTime.Analyze(okd)
 
 	return []*Report{r}
 }

@@ -9,7 +9,7 @@ import (
 )
 
 func main() {
-	h := drones.NewHttpGetReq("http://localhost/", nil, nil)
+	h := drones.NewHttpGetReq("http://localhost/about", nil, nil)
 	d := drones.NewHttpDrone(h)
 	for i := 1; i <= 256; i *= 2 {
 		c := antpost.Run(d, i, 0, 15*time.Second)

@@ -42,6 +42,7 @@ func (h *httpDrone) Run(context *antpost.Context) antpost.DroneResult {
 		return antpost.ResultConnectFail
 	}
 
+	defer resp.Body.Close()
 	data, err := ioutil.ReadAll(resp.Body)
 	context.Step(antpost.StepResponsed)
 

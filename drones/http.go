@@ -24,6 +24,10 @@ func NewHttpGetReq(url string, next NextHttp, arg interface{}) *HttpReq {
 	return &HttpReq{url, "GET", nil, nil, next, arg}
 }
 
+func NewHttpPostReq(url string, data []byte, next NextHttp, arg interface{}) *HttpReq {
+	return &HttpReq{url, "POST", nil, data, next, arg}
+}
+
 func NewHttpDrone(h *HttpReq) antpost.Drone {
 	d := new(httpDrone)
 	d.http = h
@@ -61,6 +65,8 @@ func (h *httpDrone) Run(context *antpost.Context) antpost.DroneResult {
 func (h *httpDrone) Next() antpost.Drone {
 	if h.next != nil {
 		return NewHttpDrone(h.next)
+	} else if h.http.Next != nil {
+		return NewHttpDrone(h.http.Next(h.http, false, 0, nil, nil))
 	} else {
 		return h
 	}

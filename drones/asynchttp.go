@@ -103,7 +103,10 @@ type asyncHttp struct {
 func newAsyncHttp(hostport string) (*asyncHttp, error) {
 	host, port, err := net.SplitHostPort(hostport)
 	if err != nil {
-		return nil, err
+		host, port, err = net.SplitHostPort(hostport + ":80")
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	if len(port) == 0 {

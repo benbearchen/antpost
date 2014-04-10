@@ -55,11 +55,12 @@ func (h *asyncHttpDrone) Run(context *antpost.Context) antpost.DroneResult {
 		return antpost.ResultConnectFail
 	}
 
-	for q := false; !q; {
+	p, q := false, false
+	for !p && !q {
 		select {
 		case req, ok := <-h.http.Operator.Next():
 			if !ok {
-				q = true
+				p = true
 			} else {
 				async.Do(req.Url, req.Method, req.Header, req.Data, req.KeepAlive)
 			}
@@ -68,6 +69,21 @@ func (h *asyncHttpDrone) Run(context *antpost.Context) antpost.DroneResult {
 				q = true
 			} else {
 				h.http.Operator.Response(context, response)
+			}
+		}
+	}
+
+	async.Shutdown()
+
+	if !q {
+		for !q {
+			select {
+			case response, ok := <-async.Response():
+				if !ok {
+					q = true
+				} else {
+					h.http.Operator.Response(context, response)
+				}
 			}
 		}
 	}
@@ -221,6 +237,7 @@ func (h *asyncHttp) getReq() *asyncHttpRequest {
 }
 
 func (h *asyncHttp) goWrite() {
+	defer h.conn.CloseWrite()
 	for {
 		select {
 		case _, ok := <-h.wc:

@@ -13,7 +13,7 @@ func main() {
 	d := drones.NewHttpDrone(h)
 	for i := 1; i <= 256; i *= 2 {
 		c := antpost.Run(d, i, 0, 15*time.Second)
-		fmt.Println("goroutines: ", i, c.Report()[0])
+		fmt.Printf("goroutines: %5d\n%v\n", i, c.Report())
 		time.Sleep(time.Second * 1)
 	}
 }

@@ -55,6 +55,8 @@ func (h *httpDrone) Run(context *antpost.Context) antpost.DroneResult {
 		h.next = h.http.Next(h.http, ok, resp.StatusCode, resp.Header, data)
 	}
 
+	context.Bool("conn", err == nil)
+
 	if err != nil {
 		return antpost.ResultResponseBroken
 	} else {

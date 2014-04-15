@@ -1,7 +1,9 @@
 package antpost
 
 import (
+	"fmt"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -21,6 +23,14 @@ const (
 	StepResponsed DroneStep = iota
 )
 
+type BoolReport struct {
+	N            int
+	True         int
+	TruePercent  float32
+	False        int
+	FalsePercent float32
+}
+
 type DurationReport struct {
 	N   int
 	Avg time.Duration
@@ -29,15 +39,75 @@ type DurationReport struct {
 	P95 time.Duration
 }
 
-type Report struct {
-	Time   DurationReport
-	OKTime DurationReport
+type StatReport struct {
+	Bools     map[string]*BoolReport
+	Durations map[string]*DurationReport
+	Subs      map[string]*StatReport
 }
 
-func (r *DurationReport) Analyze(times []time.Duration) {
+type Report struct {
+	Time   *DurationReport
+	OKTime *DurationReport
+	Stat   *StatReport
+}
+
+func (r *Report) String() string {
+	return "Time:    " + r.Time.String() + "\n" + "OKsTime: " + r.OKTime.String() + "\n" + "Stat >>>\n" + r.Stat.String()
+}
+
+func (s *StatReport) String() string {
+	return "    " + strings.Join(s.string("    "), "\n    ") + "\n"
+}
+
+func (s *StatReport) string(prefix string) []string {
+	r := make([]string, 0, len(s.Bools)+len(s.Durations))
+	for n, b := range s.Bools {
+		r = append(r, n+" \t"+b.String())
+	}
+
+	for n, d := range s.Durations {
+		r = append(r, n+" \t"+d.String())
+	}
+
+	rs := make([]string, 0, len(s.Subs)*4)
+	for n, s := range s.Subs {
+		rs = append(rs, n+" >>>")
+		for _, s := range s.string(prefix) {
+			rs = append(rs, prefix+s)
+		}
+	}
+
+	return append(r, rs...)
+}
+
+func (b *BoolReport) String() string {
+	return fmt.Sprintf("n %7d,  true %7d(%.2f%%),  false %7d(%.2f%%)", b.N, b.True, b.TruePercent*100, b.False, b.FalsePercent*100)
+}
+
+func (d *DurationReport) String() string {
+	return fmt.Sprintf("n %7d,  avg %v,  5%% %v,  50%% %v, 95%% %v", d.N, d.Avg, d.P05, d.P50, d.P95)
+}
+
+func AnalyzeBoolReport(values []bool) *BoolReport {
+	n := len(values)
+	if n <= 0 {
+		return &BoolReport{N: 0}
+	}
+
+	t := 0
+	for _, v := range values {
+		if v {
+			t++
+		}
+	}
+
+	return &BoolReport{n, t, float32(t) / float32(n), n - t, float32(n-t) / float32(n)}
+}
+
+func AnalyzeDurationReport(times []time.Duration) *DurationReport {
 	n := len(times)
 	if n <= 0 {
-		return
+		return &DurationReport{N: 0}
 	}
 
 	d := make([]int, len(times))
@@ -56,9 +126,11 @@ func (r *DurationReport) Analyze(times []time.Duration) {
 	p50 := time.Duration(d[n*50/100]) * time.Microsecond
 	p95 := time.Duration(d[n*95/100]) * time.Microsecond
 
+	r := new(DurationReport)
 	r.N = n
 	r.Avg = time.Microsecond * time.Duration(sum/int64(n))
 	r.P05 = p05
 	r.P50 = p50
 	r.P95 = p95
+	return r
 }

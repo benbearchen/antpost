@@ -39,10 +39,74 @@ type DurationReport struct {
 	P95 time.Duration
 }
 
+type NominalReportItem struct {
+	Name    string
+	N       int
+	Percent float32
+}
+
+type NominalReport struct {
+	Items []*NominalReportItem
+}
+
+type OrdinalReportRank struct {
+	Name                  string
+	Order                 int
+	N                     int
+	Percent               float32
+	CumulativeN           int
+	CumulativePercent     float32
+	DownCumulativeN       int
+	DownCumulativePercent float32
+}
+
+type OrdinalReport struct {
+	Ranks []*OrdinalReportRank
+}
+
+type IntervalReportItem struct {
+	Value                 float64
+	N                     int
+	Percent               float32
+	CumulativeN           int
+	CumulativePercent     float32
+	DownCumulativeN       int
+	DownCumulativePercent float32
+}
+
+type IntervalReport struct {
+	Interval float64
+	Items    []*IntervalReportItem
+
+	Mean              float64
+	StandardDeviation float64 // 标准差
+}
+
+type RatioReport struct {
+	N int
+
+	Mean          float64 // 算术平均数
+	GeometricMean float64 // 几何平均数
+	QuadraticMean float64 // 平方平均数
+	HarmonicMean  float64 // 调和平均数
+
+	StandardDeviation float64 // 标准差
+
+	P05 float64
+	P25 float64
+	P50 float64
+	P75 float64
+	P95 float64
+}
+
 type StatReport struct {
 	Bools     map[string]*BoolReport
 	Durations map[string]*DurationReport
 	Subs      map[string]*StatReport
+	Nominals  map[string]*NominalReport
+	Ordinals  map[string]*OrdinalReport
+	Intervals map[string]*IntervalReport
+	Ratios    map[string]*RatioReport
 }
 
 type Report struct {

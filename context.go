@@ -2,12 +2,13 @@ package antpost
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
 type OrdinalRank interface {
 	Name() string
-	LessThan(rank OrdinalRank) bool
+	Order() int
 	All() []OrdinalRank
 	Related(rank OrdinalRank) bool
 }
@@ -303,6 +304,10 @@ func (s *stat) Report() *StatReport {
 	r.Bools = make(map[string]*BoolReport)
 	r.Durations = make(map[string]*DurationReport)
 	r.Subs = make(map[string]*StatReport)
+	r.Nominals = make(map[string]*NominalReport)
+	r.Ordinals = make(map[string]*OrdinalReport)
+	r.Intervals = make(map[string]*IntervalReport)
+	r.Ratios = make(map[string]*RatioReport)
 
 	for n, b := range s.bools {
 		r.Bools[n] = AnalyzeBoolReport(b)
@@ -314,6 +319,22 @@ func (s *stat) Report() *StatReport {
 
 	for n, s := range s.subs {
 		r.Subs[n] = s.Report()
+	}
+
+	for n, v := range s.nominals {
+		r.Nominals[n] = v.report()
+	}
+
+	for n, v := range s.ordinals {
+		r.Ordinals[n] = v.report()
+	}
+
+	for n, v := range s.intervals {
+		r.Intervals[n] = v.report()
+	}
+
+	for n, v := range s.ratios {
+		r.Ratios[n] = v.report()
 	}
 
 	return r
@@ -419,13 +440,8 @@ func (r *ordinalRank) Name() string {
 	return r.rank
 }
 
-func (r *ordinalRank) LessThan(rank OrdinalRank) bool {
-	other, ok := rank.(*ordinalRank)
-	if !ok || r.gen != other.gen {
-		return false
-	}
-
-	return r.gen.ranks[r.rank] < other.gen.ranks[other.rank]
+func (r *ordinalRank) Order() int {
+	return r.gen.ranks[r.rank]
 }
 
 func (r *ordinalRank) All() []OrdinalRank {
@@ -480,6 +496,31 @@ func (n *nominalStat) combine(v *nominalStat) {
 	}
 }
 
+func (n *nominalStat) report() *NominalReport {
+	items := make([]*NominalReportItem, 0, len(n.items))
+	names := make([]string, len(n.items))
+	for name, _ := range n.items {
+		names = append(names, name)
+	}
+
+	sort.Strings(names)
+	count := 0
+	for _, name := range names {
+		c := n.items[name]
+		count += c
+		item := new(NominalReportItem)
+		item.Name = name
+		item.N = c
+		items = append(items, item)
+	}
+
+	for _, item := range items {
+		item.Percent = float32(item.N) * 100.0 / float32(count)
+	}
+
+	return &NominalReport{items}
+}
+
 type ordinalCount struct {
 	rank OrdinalRank
 	c    int
@@ -517,6 +558,44 @@ func (o *ordinalStat) combine(v *ordinalStat) {
 	}
 }
 
+func (o *ordinalStat) report() *OrdinalReport {
+	items := make([]*OrdinalReportRank, len(o.ranks))
+	if len(o.ranks) <= 0 {
+		return &OrdinalReport{make([]*OrdinalReportRank, 0)}
+	}
+
+	count := 0
+	for _, rank := range o.ranks {
+		r := new(OrdinalReportRank)
+		r.Name = rank.rank.Name()
+		r.Order = rank.rank.Order()
+		r.N = rank.c
+		items[rank.rank.Order()] = r
+
+		count += rank.c
+	}
+
+	if count == 0 {
+		return &OrdinalReport{make([]*OrdinalReportRank, 0)}
+	}
+
+	up := 0
+	down := count
+	for _, item := range items {
+		item.Percent = float32(item.N) * 100.0 / float32(count)
+
+		up += item.N
+		item.CumulativeN = up
+		item.CumulativePercent = float32(up) * 100.0 / float32(count)
+
+		item.DownCumulativeN = down
+		item.DownCumulativePercent = float32(down) * 100.0 / float32(count)
+		down -= item.N
+	}
+
+	return &OrdinalReport{items}
+}
+
 type intervalStat struct {
 	values   []float64 // float64 不太好按 interval map……
 	interval *float64
@@ -544,6 +623,97 @@ func (i *intervalStat) combine(v *intervalStat) {
 	}
 }
 
+func (i *intervalStat) report() *IntervalReport {
+	if len(i.values) <= 0 {
+		return &IntervalReport{1, make([]*IntervalReportItem, 0), 0, 0}
+	}
+
+	interval, min, _ := calcInterval(i.values)
+	if i.interval != nil {
+		interval = *i.interval
+	}
+
+	steps := make(map[float64]int)
+	for _, v := range i.values {
+		v = stepInterval(v, min, interval)
+		c, ok := steps[v]
+		if ok {
+			steps[v] = c + 1
+		} else {
+			steps[v] = 1
+		}
+	}
+
+	s := make([]float64, 0, len(steps))
+	for v, _ := range steps {
+		s = append(s, v)
+	}
+
+	sort.Float64s(s)
+	count := 0
+	items := make([]*IntervalReportItem, 0, len(s))
+	for _, v := range s {
+		c := steps[v]
+		item := new(IntervalReportItem)
+		item.Value = v
+		item.N = c
+		count += c
+
+		items = append(items, item)
+	}
+
+	up := 0
+	down := count
+	for _, item := range items {
+		item.Percent = float32(item.N) * 100.0 / float32(count)
+
+		up += item.N
+		item.CumulativeN = up
+		item.CumulativePercent = float32(up) * 100.0 / float32(count)
+
+		item.DownCumulativeN = down
+		item.DownCumulativePercent = float32(down) * 100.0 / float32(count)
+		down -= item.N
+	}
+
+	var mean float64 = 0              // TODO:
+	var standardDeviation float64 = 0 // TODO:
+
+	return &IntervalReport{interval, items, mean, standardDeviation}
+}
+
+func calcInterval(values []float64) (interval, min, max float64) {
+	f := make(map[float64]bool)
+	for _, v := range values {
+		if _, ok := f[v]; !ok {
+			f[v] = true
+		}
+	}
+
+	s := make([]float64, 0, len(f))
+	for v, _ := range f {
+		s = append(s, v)
+	}
+
+	sort.Float64s(s)
+	min = s[0]
+	max = s[len(s)-1]
+
+	d := make([]float64, len(s)-1)
+	for i := 1; i < len(s); i++ {
+		d[i-1] = s[i] - s[i-1]
+	}
+
+	sort.Float64s(d)
+	// TODO:
+	return 1, min, max
+}
+
+func stepInterval(v, min, interval float64) float64 {
+	// TODO: return v + interval *  int((v - min + 0.1) / interval)
+	return v
+}
+
 type ratioStat struct {
 	values []float64
 }
@@ -560,4 +730,9 @@ func (r *ratioStat) Value(value float64) {
 
 func (r *ratioStat) combine(v *ratioStat) {
 	r.values = append(r.values, v.values...)
+}
+
+func (r *ratioStat) report() *RatioReport {
+	// TODO:
+	return nil
 }

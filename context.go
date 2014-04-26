@@ -628,7 +628,7 @@ func (i *intervalStat) report() *IntervalReport {
 		return &IntervalReport{1, make([]*IntervalReportItem, 0), 0, 0}
 	}
 
-	interval, min, _ := calcInterval(i.values)
+	interval, min := calcInterval(i.values)
 	if i.interval != nil {
 		interval = *i.interval
 	}
@@ -680,38 +680,6 @@ func (i *intervalStat) report() *IntervalReport {
 	var standardDeviation float64 = 0 // TODO:
 
 	return &IntervalReport{interval, items, mean, standardDeviation}
-}
-
-func calcInterval(values []float64) (interval, min, max float64) {
-	f := make(map[float64]bool)
-	for _, v := range values {
-		if _, ok := f[v]; !ok {
-			f[v] = true
-		}
-	}
-
-	s := make([]float64, 0, len(f))
-	for v, _ := range f {
-		s = append(s, v)
-	}
-
-	sort.Float64s(s)
-	min = s[0]
-	max = s[len(s)-1]
-
-	d := make([]float64, len(s)-1)
-	for i := 1; i < len(s); i++ {
-		d[i-1] = s[i] - s[i-1]
-	}
-
-	sort.Float64s(d)
-	// TODO:
-	return 1, min, max
-}
-
-func stepInterval(v, min, interval float64) float64 {
-	// TODO: return v + interval *  int((v - min + 0.1) / interval)
-	return v
 }
 
 type ratioStat struct {

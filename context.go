@@ -628,8 +628,13 @@ func (i *intervalStat) report() *IntervalReport {
 		return &IntervalReport{1, make([]*IntervalReportItem, 0), 0, 0}
 	}
 
+	// TODO: define value's significant digit
 	interval, min := calcInterval(i.values)
 	if i.interval != nil {
+		if !isFloat64Approach(interval, *i.interval, interval) {
+			fmt.Println("not equal interval: set", *i.interval, " vs calc ", interval)
+		}
+
 		interval = *i.interval
 	}
 
@@ -676,8 +681,8 @@ func (i *intervalStat) report() *IntervalReport {
 		down -= item.N
 	}
 
-	var mean float64 = 0              // TODO:
-	var standardDeviation float64 = 0 // TODO:
+	var mean float64 = calcMean(i.values)
+	var standardDeviation float64 = calcStandardDeviation(i.values)
 
 	return &IntervalReport{interval, items, mean, standardDeviation}
 }

@@ -141,6 +141,34 @@ func (s *StatReport) string(prefix string) []string {
 		}
 	}
 
+	for n, v := range s.Nominals {
+		rs = append(rs, n+" >>>")
+		for _, s := range v.string() {
+			rs = append(rs, prefix+s)
+		}
+	}
+
+	for n, v := range s.Ordinals {
+		rs = append(rs, n+" >>>")
+		for _, s := range v.string() {
+			rs = append(rs, prefix+s)
+		}
+	}
+
+	for n, v := range s.Intervals {
+		rs = append(rs, n+" >>>")
+		for _, s := range v.string() {
+			rs = append(rs, prefix+s)
+		}
+	}
+
+	for n, v := range s.Ratios {
+		rs = append(rs, n+" >>>")
+		for _, s := range v.string() {
+			rs = append(rs, prefix+s)
+		}
+	}
+
 	return append(r, rs...)
 }
 
@@ -196,5 +224,56 @@ func AnalyzeDurationReport(times []time.Duration) *DurationReport {
 	r.P05 = p05
 	r.P50 = p50
 	r.P95 = p95
+	return r
+}
+
+func (v *NominalReport) string() []string {
+	r := make([]string, 0, len(v.Items))
+	for _, item := range v.Items {
+		s := fmt.Sprintf("%30s : n %7d(%6.2f%%)", item.Name, item.N, item.Percent)
+		r = append(r, s)
+	}
+
+	return r
+}
+
+func (v *OrdinalReport) string() []string {
+	r := make([]string, 0, len(v.Ranks)*2)
+	for _, item := range v.Ranks {
+		s := fmt.Sprintf("%10s : ord(%2d)", item.Name, item.Order)
+		r = append(r, s)
+		s = fmt.Sprintf("%12s n %6d(%6.2f%%), c %6d(%6.2f%%), d %6d(%6.2f%%)", "", item.N, item.Percent, item.CumulativeN, item.CumulativePercent, item.DownCumulativeN, item.DownCumulativePercent)
+		r = append(r, s)
+	}
+
+	return r
+}
+
+func (v *IntervalReport) string() []string {
+	r := make([]string, 0, len(v.Items)*2+1)
+	s := fmt.Sprintf("interval: %15f, avg: %15f, sd: %15f", v.Interval, v.Mean, v.StandardDeviation)
+	r = append(r, s)
+
+	for _, item := range v.Items {
+		s := fmt.Sprintf("step: %-15f(%d)", item.Value, int((item.Value-v.Items[0].Value)/v.Interval+0.01))
+		r = append(r, s)
+		s = fmt.Sprintf("   n %7d(%6.2f%%), c %7d(%6.2f%%), d %7d(%6.2f%%)", item.N, item.Percent, item.CumulativeN, item.CumulativePercent, item.DownCumulativeN, item.DownCumulativePercent)
+		r = append(r, s)
+	}
+
+	return r
+}
+
+func (v *RatioReport) string() []string {
+	r := make([]string, 0, 4)
+	s := fmt.Sprintf("count: %13d,  avg: %15f,  SD: %16f", v.N, v.Mean, v.StandardDeviation)
+	r = append(r, s)
+	s = fmt.Sprintf("G: %17f,  Q: %17f,  H: %17f", v.GeometricMean, v.QuadraticMean, v.HarmonicMean)
+	r = append(r, s)
+	s = fmt.Sprintf("P05: %15f,  P25: %15f,  P25: %15f", v.P05, v.P25, v.P50)
+	r = append(r, s)
+	s = fmt.Sprintf("P75: %15f,  P95: %15f", v.P75, v.P95)
+	r = append(r, s)
+
 	return r
 }

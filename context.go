@@ -2,6 +2,7 @@ package antpost
 
 import (
 	"fmt"
+	"math"
 	"sort"
 	"time"
 )
@@ -167,6 +168,10 @@ func (c *Context) Duration(name string, duration time.Duration) {
 
 func (c *Context) SubStat(name string) Stat {
 	return c.stat.Sub(name)
+}
+
+func (c *Context) Stat() Stat {
+	return c.stat
 }
 
 type droneContext struct {
@@ -498,7 +503,7 @@ func (n *nominalStat) combine(v *nominalStat) {
 
 func (n *nominalStat) report() *NominalReport {
 	items := make([]*NominalReportItem, 0, len(n.items))
-	names := make([]string, len(n.items))
+	names := make([]string, 0, len(n.items))
 	for name, _ := range n.items {
 		names = append(names, name)
 	}
@@ -631,8 +636,9 @@ func (i *intervalStat) report() *IntervalReport {
 	// TODO: define value's significant digit
 	interval, min := calcInterval(i.values)
 	if i.interval != nil {
-		if !isFloat64Approach(interval, *i.interval, interval) {
-			fmt.Println("not equal interval: set", *i.interval, " vs calc ", interval)
+		m := math.Mod(interval, *i.interval) / *i.interval
+		if m > 1e-14 && m < 1-1e-14 {
+			fmt.Println("set interval ", *i.interval, " can't div calc interval ", interval)
 		}
 
 		interval = *i.interval
@@ -706,6 +712,26 @@ func (r *ratioStat) combine(v *ratioStat) {
 }
 
 func (r *ratioStat) report() *RatioReport {
-	// TODO:
-	return nil
+	if len(r.values) <= 0 {
+		return &RatioReport{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
+	}
+
+	ratio := new(RatioReport)
+
+	ratio.N = len(r.values)
+
+	ratio.Mean = calcMean(r.values)
+	ratio.GeometricMean = calcGeometricMean(r.values)
+	ratio.QuadraticMean = calcQuadraticMean(r.values)
+	ratio.HarmonicMean = calcHarmonicMean(r.values)
+
+	ratio.StandardDeviation = calcStandardDeviation(r.values)
+
+	sort.Float64s(r.values)
+	ratio.P05 = r.values[ratio.N*5/100]
+	ratio.P25 = r.values[ratio.N*25/100]
+	ratio.P50 = r.values[ratio.N*50/100]
+	ratio.P75 = r.values[ratio.N*75/100]
+	ratio.P95 = r.values[ratio.N*95/100]
+	return ratio
 }

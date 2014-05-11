@@ -66,12 +66,16 @@ type OrdinalReport struct {
 
 type IntervalReportItem struct {
 	Value                 float64
+	Step                  int
 	N                     int
 	Percent               float32
 	CumulativeN           int
 	CumulativePercent     float32
 	DownCumulativeN       int
 	DownCumulativePercent float32
+
+	Mean              float64
+	StandardDeviation float64
 }
 
 type IntervalReport struct {
@@ -255,7 +259,7 @@ func (v *IntervalReport) string() []string {
 	r = append(r, s)
 
 	for _, item := range v.Items {
-		s := fmt.Sprintf("step: %-15f(%d)", item.Value, int((item.Value-v.Items[0].Value)/v.Interval+0.01))
+		s := fmt.Sprintf("step: %-15f(%2d), avg: %15f, sd: %15f", item.Value, item.Step, item.Mean, item.StandardDeviation)
 		r = append(r, s)
 		s = fmt.Sprintf("   n %7d(%6.2f%%), c %7d(%6.2f%%), d %7d(%6.2f%%)", item.N, item.Percent, item.CumulativeN, item.CumulativePercent, item.DownCumulativeN, item.DownCumulativePercent)
 		r = append(r, s)

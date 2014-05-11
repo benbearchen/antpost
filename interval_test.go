@@ -88,7 +88,7 @@ func TestCalcInterval(t *testing.T) {
 }
 
 func doStepInterval(v, min, interval, r float64, t *testing.T) {
-	result := stepInterval(v, min, interval)
+	_, result := stepInterval(v, min, interval)
 	if result != r {
 		t.Errorf("stepInterval(%v, %v, %v) => %v != %v", v, min, interval, result, r)
 	}

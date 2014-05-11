@@ -645,29 +645,38 @@ func (i *intervalStat) report() *IntervalReport {
 	}
 
 	steps := make(map[float64]int)
+	stepValues := make(map[float64]float64)
+	stepItems := make(map[float64][]float64)
 	for _, v := range i.values {
-		v = stepInterval(v, min, interval)
-		c, ok := steps[v]
+		step, value := stepInterval(v, min, interval)
+		c, ok := steps[step]
 		if ok {
-			steps[v] = c + 1
+			steps[step] = c + 1
 		} else {
-			steps[v] = 1
+			steps[step] = 1
+			stepValues[step] = value
+			stepItems[step] = make([]float64, 0)
 		}
+
+		stepItems[step] = append(stepItems[step], v)
 	}
 
 	s := make([]float64, 0, len(steps))
-	for v, _ := range steps {
-		s = append(s, v)
+	for step, _ := range steps {
+		s = append(s, step)
 	}
 
 	sort.Float64s(s)
 	count := 0
 	items := make([]*IntervalReportItem, 0, len(s))
-	for _, v := range s {
-		c := steps[v]
+	for _, step := range s {
+		c := steps[step]
 		item := new(IntervalReportItem)
-		item.Value = v
+		item.Value = stepValues[step]
+		item.Step = int(step)
 		item.N = c
+		item.Mean = calcMean(stepItems[step])
+		item.StandardDeviation = calcStandardDeviation(stepItems[step])
 		count += c
 
 		items = append(items, item)

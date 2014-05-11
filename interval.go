@@ -116,6 +116,7 @@ func uniqueFloat64s(values []float64) []float64 {
 	return s
 }
 
-func stepInterval(v, min, interval float64) float64 {
-	return min + interval*math.Floor((v-min)/interval+0.1)
+func stepInterval(v, min, interval float64) (float64, float64) {
+	step := math.Floor((v-min)/interval + 0.1)
+	return step, min + interval*step
 }
